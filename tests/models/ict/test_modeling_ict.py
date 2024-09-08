@@ -18,11 +18,9 @@
 import inspect
 import unittest
 
-from transformers import ICTConfig
+from transformers import IctConfig
 from transformers.testing_utils import (
-    require_accelerate,
     require_torch,
-    require_torch_gpu,
     require_vision,
     slow,
     torch_device,
@@ -30,7 +28,7 @@ from transformers.testing_utils import (
 from transformers.utils import cached_property, is_torch_available, is_vision_available
 
 from ...test_configuration_common import ConfigTester
-from ...test_modeling_common import ModelTesterMixin, floats_tensor, ids_tensor
+from ...test_modeling_common import ModelTesterMixin, ids_tensor
 from ...test_pipeline_mixin import PipelineTesterMixin
 
 
@@ -38,165 +36,134 @@ if is_torch_available():
     import torch
     from torch import nn
 
-    from transformers import ICTForImageClassification, ICTForMaskedImageModeling, ICTModel
+    torch.manual_seed(3)
+
+    from transformers import IctModel
     from transformers.models.ict.modeling_ict import ICT_PRETRAINED_MODEL_ARCHIVE_LIST
 
 
 if is_vision_available():
     from PIL import Image
 
-    from transformers import ViTFeatureExtractor
+    from transformers import IctImageProcessor
 
 
-class ICTModelTester:
+class IctModelTester:
     def __init__(
         self,
         parent,
         batch_size=13,
-        image_size=30,
-        patch_size=2,
-        num_channels=3,
-        is_training=True,
-        use_labels=True,
+        vocab_size=512,
         hidden_size=32,
-        num_hidden_layers=5,
+        num_hidden_layers=6,
         num_attention_heads=4,
+        num_residual_blocks=8,
         intermediate_size=37,
-        hidden_act="gelu",
-        hidden_dropout_prob=0.1,
-        attention_probs_dropout_prob=0.1,
-        type_sequence_label_size=10,
+        activation_function="gelu",
+        embedding_dropout_prob=0.0,
+        residual_dropout_prob=0.0,
+        attention_probs_dropout_prob=0.0,
         initializer_range=0.02,
+        layer_norm_eps=1e-12,
+        image_size=32,
+        num_channels=3,
+        qkv_bias=False,
+        temperature=1.0,
+        top_k=50,
+        gan_loss_function="nsgan",
+        output_image_size=256,
         scope=None,
-        encoder_stride=2,
+        is_training=True,
     ):
         self.parent = parent
         self.batch_size = batch_size
-        self.image_size = image_size
-        self.patch_size = patch_size
-        self.num_channels = num_channels
-        self.is_training = is_training
-        self.use_labels = use_labels
+        self.vocab_size = vocab_size
         self.hidden_size = hidden_size
         self.num_hidden_layers = num_hidden_layers
         self.num_attention_heads = num_attention_heads
+        self.num_residual_blocks = num_residual_blocks
         self.intermediate_size = intermediate_size
-        self.hidden_act = hidden_act
-        self.hidden_dropout_prob = hidden_dropout_prob
+        self.activation_function = activation_function
+        self.embedding_dropout_prob = embedding_dropout_prob
+        self.residual_dropout_prob = residual_dropout_prob
         self.attention_probs_dropout_prob = attention_probs_dropout_prob
-        self.type_sequence_label_size = type_sequence_label_size
         self.initializer_range = initializer_range
-        self.scope = scope
-        self.encoder_stride = encoder_stride
+        self.layer_norm_eps = layer_norm_eps
+        self.image_size = image_size
+        self.num_channels = num_channels
+        self.qkv_bias = qkv_bias
+        self.temperature = temperature
+        self.top_k = top_k
+        self.gan_loss_function = gan_loss_function
+        self.output_image_size = output_image_size
 
-        # in ICT, the seq length equals the number of patches + 1 (we add 1 for the [CLS] token)
-        num_patches = (image_size // patch_size) ** 2
-        self.seq_length = num_patches + 1
+        self.seq_length = image_size * image_size
+        self.scope = scope
+        self.is_training = is_training
 
     def prepare_config_and_inputs(self):
-        pixel_values = floats_tensor([self.batch_size, self.num_channels, self.image_size, self.image_size])
+        pixel_values = ids_tensor([self.batch_size, self.image_size * self.image_size], self.vocab_size)
+        bool_masked_pos = torch.randint(low=0, high=2, size=(1, pixel_values.shape[1])).bool()
 
-        labels = None
-        if self.use_labels:
-            labels = ids_tensor([self.batch_size], self.type_sequence_label_size)
+        clusters = torch.rand(512, 3)
 
         config = self.get_config()
 
-        return config, pixel_values, labels
+        return config, pixel_values, bool_masked_pos, clusters
 
     def get_config(self):
-        return ICTConfig(
-            image_size=self.image_size,
-            patch_size=self.patch_size,
-            num_channels=self.num_channels,
+        return IctConfig(
+            vocab_size=self.vocab_size,
             hidden_size=self.hidden_size,
             num_hidden_layers=self.num_hidden_layers,
             num_attention_heads=self.num_attention_heads,
+            num_residual_blocks=self.num_residual_blocks,
             intermediate_size=self.intermediate_size,
-            hidden_act=self.hidden_act,
-            hidden_dropout_prob=self.hidden_dropout_prob,
+            activation_function=self.activation_function,
+            embedding_dropout_prob=self.embedding_dropout_prob,
+            residual_dropout_prob=self.residual_dropout_prob,
             attention_probs_dropout_prob=self.attention_probs_dropout_prob,
-            is_decoder=False,
             initializer_range=self.initializer_range,
-            encoder_stride=self.encoder_stride,
+            layer_norm_eps=self.layer_norm_eps,
+            image_size=self.image_size,
+            num_channels=self.num_channels,
+            qkv_bias=self.qkv_bias,
+            temperature=self.temperature,
+            top_k=self.top_k,
+            gan_loss_function=self.gan_loss_function,
+            output_image_size=self.output_image_size,
         )
 
-    def create_and_check_model(self, config, pixel_values, labels):
-        model = ICTModel(config=config)
+    def create_and_check_model(self, config, pixel_values, bool_masked_pos, clusters):
+        model = IctModel(config=config)
         model.to(torch_device)
         model.eval()
-        result = model(pixel_values)
-        self.parent.assertEqual(result.last_hidden_state.shape, (self.batch_size, self.seq_length, self.hidden_size))
-
-    def create_and_check_for_masked_image_modeling(self, config, pixel_values, labels):
-        model = ICTForMaskedImageModeling(config=config)
-        model.to(torch_device)
-        model.eval()
-        result = model(pixel_values)
+        result = model(pixel_values, bool_masked_pos, clusters)
         self.parent.assertEqual(
-            result.logits.shape, (self.batch_size, self.num_channels, self.image_size, self.image_size)
+            result.reconstruction.shape,
+            (self.batch_size, self.num_channels, self.output_image_size, self.output_image_size),
         )
-
-        # test greyscale images
-        config.num_channels = 1
-        model = ICTForMaskedImageModeling(config)
-        model.to(torch_device)
-        model.eval()
-
-        pixel_values = floats_tensor([self.batch_size, 1, self.image_size, self.image_size])
-        result = model(pixel_values)
-        self.parent.assertEqual(result.logits.shape, (self.batch_size, 1, self.image_size, self.image_size))
-
-    def create_and_check_for_image_classification(self, config, pixel_values, labels):
-        config.num_labels = self.type_sequence_label_size
-        model = ICTForImageClassification(config)
-        model.to(torch_device)
-        model.eval()
-        result = model(pixel_values, labels=labels)
-        self.parent.assertEqual(result.logits.shape, (self.batch_size, self.type_sequence_label_size))
-
-        # test greyscale images
-        config.num_channels = 1
-        model = ICTForImageClassification(config)
-        model.to(torch_device)
-        model.eval()
-
-        pixel_values = floats_tensor([self.batch_size, 1, self.image_size, self.image_size])
-        result = model(pixel_values)
-        self.parent.assertEqual(result.logits.shape, (self.batch_size, self.type_sequence_label_size))
 
     def prepare_config_and_inputs_for_common(self):
         config_and_inputs = self.prepare_config_and_inputs()
-        (
-            config,
-            pixel_values,
-            labels,
-        ) = config_and_inputs
-        inputs_dict = {"pixel_values": pixel_values}
+        (config, pixel_values, bool_masked_pos, clusters) = config_and_inputs
+        inputs_dict = {
+            "pixel_values": pixel_values,
+            "bool_masked_pos": bool_masked_pos,
+            "clusters": clusters,
+        }
         return config, inputs_dict
 
 
 @require_torch
-class ICTModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
+class IctModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
     """
     Here we also overwrite some of the tests of test_modeling_common.py, as ICT does not use input_ids, inputs_embeds,
     attention_mask and seq_length.
     """
 
-    all_model_classes = (
-        (
-            ICTModel,
-            ICTForImageClassification,
-            ICTForMaskedImageModeling,
-        )
-        if is_torch_available()
-        else ()
-    )
-    pipeline_model_mapping = (
-        {"feature-extraction": ICTModel, "image-classification": ICTForImageClassification}
-        if is_torch_available()
-        else {}
-    )
+    all_model_classes = (IctModel,) if is_torch_available() else ()
+    pipeline_model_mapping = {"feature-extraction": IctModel} if is_torch_available() else {}
     fx_compatible = False
 
     test_pruning = False
@@ -204,8 +171,8 @@ class ICTModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
     test_head_masking = False
 
     def setUp(self):
-        self.model_tester = ICTModelTester(self)
-        self.config_tester = ConfigTester(self, config_class=ICTConfig, has_text_modality=False, hidden_size=37)
+        self.model_tester = IctModelTester(self)
+        self.config_tester = ConfigTester(self, config_class=IctConfig, has_text_modality=False, hidden_size=37)
 
     def test_config(self):
         self.config_tester.run_common_tests()
@@ -239,18 +206,10 @@ class ICTModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
         config_and_inputs = self.model_tester.prepare_config_and_inputs()
         self.model_tester.create_and_check_model(*config_and_inputs)
 
-    def test_for_masked_image_modeling(self):
-        config_and_inputs = self.model_tester.prepare_config_and_inputs()
-        self.model_tester.create_and_check_for_masked_image_modeling(*config_and_inputs)
-
-    def test_for_image_classification(self):
-        config_and_inputs = self.model_tester.prepare_config_and_inputs()
-        self.model_tester.create_and_check_for_image_classification(*config_and_inputs)
-
     @slow
     def test_model_from_pretrained(self):
         for model_name in ICT_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = ICTModel.from_pretrained(model_name)
+            model = IctModel.from_pretrained(model_name)
             self.assertIsNotNone(model)
 
 
@@ -262,72 +221,39 @@ def prepare_img():
 
 @require_torch
 @require_vision
-class ICTModelIntegrationTest(unittest.TestCase):
+class IctModelIntegrationTest(unittest.TestCase):
     @cached_property
-    def default_feature_extractor(self):
-        return ViTFeatureExtractor.from_pretrained("google/ict-base-patch16-224") if is_vision_available() else None
+    def default_image_processor(self):
+        return IctImageProcessor.from_pretrained("sheonhan/ict-imagenet-256") if is_vision_available() else None
 
-    @slow
-    def test_inference_image_classification_head(self):
-        model = ICTForImageClassification.from_pretrained("google/ict-base-patch16-224").to(torch_device)
+    # @slow
+    def test_inference_masked_image_modeling(self):
+        model = IctModel.from_pretrained("sheonhan/ict-imagenet-256").to(torch_device)
 
-        feature_extractor = self.default_feature_extractor
+        image_processor = self.default_image_processor
         image = prepare_img()
-        inputs = feature_extractor(images=image, return_tensors="pt").to(torch_device)
+        inputs = image_processor(images=image, return_tensors="pt")
+
+        pixel_values = inputs.pixel_values
+        image_size = pixel_values.shape[1]
+
+        bool_masked_pos = torch.randint(low=0, high=2, size=(1, image_size)).bool()
+        clusters = inputs.clusters
 
         # forward pass
         with torch.no_grad():
-            outputs = model(**inputs)
+            outputs = model(
+                pixel_values=pixel_values,
+                bool_masked_pos=bool_masked_pos,
+                clusters=clusters,
+            )
 
         # verify the logits
-        expected_shape = torch.Size((1, 1000))
+        expected_shape = torch.Size((1, 3, 256, 256))
         self.assertEqual(outputs.logits.shape, expected_shape)
 
-        expected_slice = torch.tensor([-0.2744, 0.8215, -0.0836]).to(torch_device)
-
-        self.assertTrue(torch.allclose(outputs.logits[0, :3], expected_slice, atol=1e-4))
-
-    @slow
-    def test_inference_interpolate_pos_encoding(self):
-        # ICT models have an `interpolate_pos_encoding` argument in their forward method,
-        # allowing to interpolate the pre-trained position embeddings in order to use
-        # the model on higher resolutions. The DINO model by Facebook AI leverages this
-        # to visualize self-attention on higher resolution images.
-        model = ICTModel.from_pretrained("facebook/dino-icts8").to(torch_device)
-
-        feature_extractor = ViTFeatureExtractor.from_pretrained("facebook/dino-icts8", size=480)
-        image = prepare_img()
-        inputs = feature_extractor(images=image, return_tensors="pt")
-        pixel_values = inputs.pixel_values.to(torch_device)
-
-        # forward pass
-        with torch.no_grad():
-            outputs = model(pixel_values, interpolate_pos_encoding=True)
-
-        # verify the logits
-        expected_shape = torch.Size((1, 3601, 384))
-        self.assertEqual(outputs.last_hidden_state.shape, expected_shape)
-
         expected_slice = torch.tensor(
-            [[4.2340, 4.3906, -6.6692], [4.5463, 1.8928, -6.7257], [4.4429, 0.8496, -5.8585]]
+            [[2.3445, 2.6889, 2.7313], [1.0530, 1.2416, 0.5699], [0.2205, 0.7749, 0.3953]]
         ).to(torch_device)
 
-        self.assertTrue(torch.allclose(outputs.last_hidden_state[0, :3, :3], expected_slice, atol=1e-4))
-
-    @slow
-    @require_accelerate
-    @require_torch_gpu
-    def test_inference_fp16(self):
-        r"""
-        A small test to make sure that inference work in half precision without any problem.
-        """
-        model = ICTModel.from_pretrained("facebook/dino-icts8", torch_dtype=torch.float16, device_map="auto")
-        feature_extractor = self.default_feature_extractor
-
-        image = prepare_img()
-        inputs = feature_extractor(images=image, return_tensors="pt")
-        pixel_values = inputs.pixel_values.to(torch_device)
-
-        # forward pass to make sure inference works in fp16
-        with torch.no_grad():
-            _ = model(pixel_values)
+        self.assertTrue(torch.allclose(outputs.logits[0, :3, :3, :3], expected_slice, atol=1e-4))

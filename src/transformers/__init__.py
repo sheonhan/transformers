@@ -330,7 +330,7 @@ _import_structure = {
     "models.herbert": ["HerbertTokenizer"],
     "models.hubert": ["HUBERT_PRETRAINED_CONFIG_ARCHIVE_MAP", "HubertConfig"],
     "models.ibert": ["IBERT_PRETRAINED_CONFIG_ARCHIVE_MAP", "IBertConfig"],
-    "models.ict": ["ICT_PRETRAINED_CONFIG_ARCHIVE_MAP", "ICTConfig"],
+    "models.ict": ["ICT_PRETRAINED_CONFIG_ARCHIVE_MAP", "IctConfig"],
     "models.imagegpt": ["IMAGEGPT_PRETRAINED_CONFIG_ARCHIVE_MAP", "ImageGPTConfig"],
     "models.informer": ["INFORMER_PRETRAINED_CONFIG_ARCHIVE_MAP", "InformerConfig"],
     "models.instructblip": [
@@ -910,6 +910,7 @@ else:
     _import_structure["models.efficientnet"].append("EfficientNetImageProcessor")
     _import_structure["models.flava"].extend(["FlavaFeatureExtractor", "FlavaImageProcessor", "FlavaProcessor"])
     _import_structure["models.glpn"].extend(["GLPNFeatureExtractor", "GLPNImageProcessor"])
+    _import_structure["models.ict"].extend(["IctImageProcessor"])
     _import_structure["models.imagegpt"].extend(["ImageGPTFeatureExtractor", "ImageGPTImageProcessor"])
     _import_structure["models.layoutlmv2"].extend(["LayoutLMv2FeatureExtractor", "LayoutLMv2ImageProcessor"])
     _import_structure["models.layoutlmv3"].extend(["LayoutLMv3FeatureExtractor", "LayoutLMv3ImageProcessor"])
@@ -1833,6 +1834,13 @@ else:
             "IBertPreTrainedModel",
         ]
     )
+    _import_structure["models.ict"].extend(
+        [
+            "ICT_PRETRAINED_MODEL_ARCHIVE_LIST",
+            "IctModel",
+            "IctPreTrainedModel",
+        ]
+    )
     _import_structure["models.imagegpt"].extend(
         [
             "IMAGEGPT_PRETRAINED_MODEL_ARCHIVE_LIST",
@@ -2743,15 +2751,6 @@ else:
             "ViTPreTrainedModel",
         ]
     )
-    _import_structure["models.ict"].extend(
-        [
-            "ICT_PRETRAINED_MODEL_ARCHIVE_LIST",
-            "ICTForImageClassification",
-            "ICTForMaskedImageModeling",
-            "ICTModel",
-            "ICTPreTrainedModel",
-        ]
-    )
     _import_structure["models.vit_hybrid"].extend(
         [
             "VIT_HYBRID_PRETRAINED_MODEL_ARCHIVE_LIST",
@@ -3579,13 +3578,6 @@ else:
             "TFViTPreTrainedModel",
         ]
     )
-    _import_structure["models.ict"].extend(
-        [
-            "TFICTForImageClassification",
-            "TFICTModel",
-            "TFICTPreTrainedModel",
-        ]
-    )
     _import_structure["models.vit_mae"].extend(
         [
             "TFViTMAEForPreTraining",
@@ -3915,7 +3907,6 @@ else:
     _import_structure["models.vision_encoder_decoder"].append("FlaxVisionEncoderDecoderModel")
     _import_structure["models.vision_text_dual_encoder"].extend(["FlaxVisionTextDualEncoderModel"])
     _import_structure["models.vit"].extend(["FlaxViTForImageClassification", "FlaxViTModel", "FlaxViTPreTrainedModel"])
-    _import_structure["models.ict"].extend(["FlaxICTForImageClassification", "FlaxICTModel", "FlaxICTPreTrainedModel"])
     _import_structure["models.wav2vec2"].extend(
         ["FlaxWav2Vec2ForCTC", "FlaxWav2Vec2ForPreTraining", "FlaxWav2Vec2Model", "FlaxWav2Vec2PreTrainedModel"]
     )
@@ -4219,6 +4210,7 @@ if TYPE_CHECKING:
     from .models.herbert import HerbertTokenizer
     from .models.hubert import HUBERT_PRETRAINED_CONFIG_ARCHIVE_MAP, HubertConfig
     from .models.ibert import IBERT_PRETRAINED_CONFIG_ARCHIVE_MAP, IBertConfig
+    from .models.ict import ICT_PRETRAINED_CONFIG_ARCHIVE_MAP, IctConfig
     from .models.imagegpt import IMAGEGPT_PRETRAINED_CONFIG_ARCHIVE_MAP, ImageGPTConfig
     from .models.informer import INFORMER_PRETRAINED_CONFIG_ARCHIVE_MAP, InformerConfig
     from .models.instructblip import (
@@ -4411,7 +4403,6 @@ if TYPE_CHECKING:
     from .models.vision_text_dual_encoder import VisionTextDualEncoderConfig, VisionTextDualEncoderProcessor
     from .models.visual_bert import VISUAL_BERT_PRETRAINED_CONFIG_ARCHIVE_MAP, VisualBertConfig
     from .models.vit import VIT_PRETRAINED_CONFIG_ARCHIVE_MAP, ViTConfig
-    from .models.ict import ICT_PRETRAINED_CONFIG_ARCHIVE_MAP, ICTConfig
     from .models.vit_hybrid import VIT_HYBRID_PRETRAINED_CONFIG_ARCHIVE_MAP, ViTHybridConfig
     from .models.vit_mae import VIT_MAE_PRETRAINED_CONFIG_ARCHIVE_MAP, ViTMAEConfig
     from .models.vit_msn import VIT_MSN_PRETRAINED_CONFIG_ARCHIVE_MAP, ViTMSNConfig
@@ -4738,6 +4729,7 @@ if TYPE_CHECKING:
         from .models.efficientnet import EfficientNetImageProcessor
         from .models.flava import FlavaFeatureExtractor, FlavaImageProcessor, FlavaProcessor
         from .models.glpn import GLPNFeatureExtractor, GLPNImageProcessor
+        from .models.ict import IctImageProcessor
         from .models.imagegpt import ImageGPTFeatureExtractor, ImageGPTImageProcessor
         from .models.layoutlmv2 import LayoutLMv2FeatureExtractor, LayoutLMv2ImageProcessor
         from .models.layoutlmv3 import LayoutLMv3FeatureExtractor, LayoutLMv3ImageProcessor
@@ -5505,6 +5497,11 @@ if TYPE_CHECKING:
             IBertModel,
             IBertPreTrainedModel,
         )
+        from .models.ict import (
+            ICT_PRETRAINED_MODEL_ARCHIVE_LIST,
+            IctModel,
+            IctPreTrainedModel,
+        )
         from .models.imagegpt import (
             IMAGEGPT_PRETRAINED_MODEL_ARCHIVE_LIST,
             ImageGPTForCausalImageModeling,
@@ -6239,13 +6236,6 @@ if TYPE_CHECKING:
             ViTModel,
             ViTPreTrainedModel,
         )
-        from .models.ict import (
-            ICT_PRETRAINED_MODEL_ARCHIVE_LIST,
-            ICTForImageClassification,
-            ICTForMaskedImageModeling,
-            ICTModel,
-            ICTPreTrainedModel,
-        )
         from .models.vit_hybrid import (
             VIT_HYBRID_PRETRAINED_MODEL_ARCHIVE_LIST,
             ViTHybridForImageClassification,
@@ -6917,7 +6907,6 @@ if TYPE_CHECKING:
         from .models.vision_encoder_decoder import TFVisionEncoderDecoderModel
         from .models.vision_text_dual_encoder import TFVisionTextDualEncoderModel
         from .models.vit import TFViTForImageClassification, TFViTModel, TFViTPreTrainedModel
-        from .models.ict import TFICTForImageClassification, TFICTModel, TFICTPreTrainedModel
         from .models.vit_mae import TFViTMAEForPreTraining, TFViTMAEModel, TFViTMAEPreTrainedModel
         from .models.wav2vec2 import (
             TF_WAV_2_VEC_2_PRETRAINED_MODEL_ARCHIVE_LIST,
@@ -7168,7 +7157,6 @@ if TYPE_CHECKING:
         from .models.vision_encoder_decoder import FlaxVisionEncoderDecoderModel
         from .models.vision_text_dual_encoder import FlaxVisionTextDualEncoderModel
         from .models.vit import FlaxViTForImageClassification, FlaxViTModel, FlaxViTPreTrainedModel
-        from .models.ict import FlaxICTForImageClassification, FlaxICTModel, FlaxICTPreTrainedModel
         from .models.wav2vec2 import (
             FlaxWav2Vec2ForCTC,
             FlaxWav2Vec2ForPreTraining,
